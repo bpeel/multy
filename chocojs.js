@@ -179,13 +179,12 @@ Choco.prototype.shaderSuccessCb = function (shadersString)
   this.positionAttrib = gl.getAttribLocation (this.program, "position_attrib");
   this.texCoordAttrib = gl.getAttribLocation (this.program, "tex_coord_attrib");
 
-  this.rotationUniform = gl.getUniformLocation (this.program, "rotation");
-
   var texUniform = gl.getUniformLocation (this.program, "tex");
   gl.useProgram (this.program);
   gl.uniform1i (texUniform, 0);
   gl.useProgram (null);
 
+  this.updateTransform ();
   this.loadImages ();
 
   this.triangleBuffer = gl.createBuffer ();
@@ -196,20 +195,22 @@ Choco.prototype.shaderSuccessCb = function (shadersString)
   gl.bindBuffer (gl.ARRAY_BUFFER, null);
 };
 
-Choco.prototype.updateRotation = function ()
+Choco.prototype.updateTransform = function ()
 {
   var gl = this.gl;
-  var rotation;
-  var now = (new Date ()).getTime ();
+  var w = this.canvas.width;
+  var h = this.canvas.height;
+  var scaleUniform = gl.getUniformLocation (this.program, "scale");
+  var scale;
 
-  rotation = now / 1000.0 * Math.PI * 2.0;
+  if (w > h)
+    scale = [ h / w, 1.0 ];
+  else
+    scale = [ 1.0, w / h ];
 
-  var s = Math.sin (rotation);
-  var c = Math.cos (rotation);
-
-  gl.uniformMatrix2fv (this.rotationUniform,
-                       false, /* transpose */
-                       [ c, -s, s, c ]);
+  gl.useProgram (this.program);
+  gl.uniform2fv (scaleUniform, scale);
+  gl.useProgram (null);
 };
 
 Choco.prototype.paint = function ()
@@ -217,8 +218,6 @@ Choco.prototype.paint = function ()
   var gl = this.gl;
 
   gl.useProgram (this.program);
-
-  this.updateRotation ();
 
   gl.clearColor (0.0, 0.0, 0.0, 1.0);
   gl.clear (gl.COLOR_BUFFER_BIT);
