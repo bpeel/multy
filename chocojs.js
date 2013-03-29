@@ -4,6 +4,7 @@ Choco.BUFFER_SIZE = Choco.VERTEX_SIZE * Choco.N_CHUNKS * 4;
 Choco.ANIMATION_LENGTH = 3000.0;
 Choco.CHUNK_WIDTH = 0.083;
 Choco.CHUNK_HEIGHT = 0.125;
+Choco.N_BITES = 4;
 
 function Choco ()
 {
@@ -17,6 +18,9 @@ function Choco ()
   this.chunks = new Array (Choco.N_CHUNKS);
 
   this.chunks[0] = new Float32Array (this.buffer, 0, Choco.VERTEX_SIZE * 4);
+
+  this.baseX = 0.98 - Choco.CHUNK_WIDTH * 5.0;
+  this.baseY = 0.02;
 
   for (i = 1; i < Choco.N_CHUNKS; i++)
   {
@@ -51,7 +55,8 @@ function Choco ()
 }
 
 Choco.images = [
-  "chocolate-piece.png"
+  "chocolate-piece.png",
+  "bites.png"
 ];
 
 Choco.prototype.showError = function (text)
@@ -342,54 +347,83 @@ Choco.prototype.interpolate = function (stateA, stateB, interval)
   return result;
 }
 
-Choco.prototype.updateChunkBuffer = function ()
+Choco.prototype.updateTime = function ()
 {
   var now = (new Date ()).getTime ();
-  var gl = this.gl;
-  var i;
 
   if (!this.startTime)
     this.startTime = now;
 
   var animationPos = (now - this.startTime) / Choco.ANIMATION_LENGTH;
   animationPos -= Math.floor (animationPos);
-  var statePos = animationPos * (Choco.ANIMATIONS.length - 1);
-  var stateNum = Math.floor (statePos);
-  statePos -= stateNum;
+  this.statePos = animationPos * Choco.ANIMATIONS.length;
+  this.stateNum = Math.floor (this.statePos);
+  this.statePos -= this.stateNum;
+};
 
-  var bx = 0.98 - Choco.CHUNK_WIDTH * 5.0;
-  var by = 0.02;
+Choco.prototype.updateChunkBufferForBites = function ()
+{
+  /* The first quad will just be the entire chocolate bar */
+  this.setChunk (this.chunks[0],
+                 this.baseX, this.baseY,
+                 [ 0, 0, 5, 0, 5, 5, 0, 5 ]);
+
+  /* The second chunk will be the biting animation */
+  var biteChunk = this.chunks[1];
+  this.setChunk (biteChunk,
+                 this.baseX - 2 * Choco.CHUNK_WIDTH,
+                 this.baseY + 4 * Choco.CHUNK_HEIGHT,
+                 [ 0, 0, 1, 0, 1, 1, 0, 1 ]);
+
+  var biteNum = Math.floor (this.statePos * Choco.N_BITES);
+  var biteSize = 1.0 / Choco.N_BITES;
+  biteChunk[2] = biteNum * biteSize;
+  biteChunk[6] = (biteNum + 1) * biteSize;
+  biteChunk[10] = (biteNum + 1) * biteSize;
+  biteChunk[14] = biteNum * biteSize;
+};
+
+Choco.prototype.updateChunkBufferForAnimations = function ()
+{
+  var gl = this.gl;
+  var i;
 
   for (i = 0; i < Choco.N_CHUNKS; i++)
   {
     var oldStateNum, oldState, nextState, newState;
 
-    for (oldStateNum = stateNum;
+    for (oldStateNum = this.stateNum;
          !(oldState = Choco.ANIMATIONS[oldStateNum][i]);
          oldStateNum--);
-    nextState = Choco.ANIMATIONS[stateNum + 1][i];
+    nextState = Choco.ANIMATIONS[this.stateNum + 1][i];
 
     if (nextState == null)
       newState = oldState;
     else
-      newState = this.interpolate (oldState, nextState, statePos);
+      newState = this.interpolate (oldState, nextState, this.statePos);
 
     this.setChunk (this.chunks[i],
-                   bx + newState[0] * Choco.CHUNK_WIDTH,
-                   by + newState[1] * Choco.CHUNK_HEIGHT,
+                   this.baseX + newState[0] * Choco.CHUNK_WIDTH,
+                   this.baseY + newState[1] * Choco.CHUNK_HEIGHT,
                    newState[2]);
   }
-
-  gl.bindBuffer (gl.ARRAY_BUFFER, this.chunkBuffer);
-  gl.bufferData (gl.ARRAY_BUFFER, this.buffer, gl.DYNAMIC_DRAW);
-  gl.bindBuffer (gl.ARRAY_BUFFER, null);
 };
 
 Choco.prototype.paint = function ()
 {
   var gl = this.gl;
 
-  this.updateChunkBuffer ();
+  this.updateTime ();
+
+  if (this.stateNum == Choco.ANIMATIONS.length - 1)
+    this.updateChunkBufferForBites ();
+  else
+    this.updateChunkBufferForAnimations ();
+
+
+  gl.bindBuffer (gl.ARRAY_BUFFER, this.chunkBuffer);
+  gl.bufferData (gl.ARRAY_BUFFER, this.buffer, gl.DYNAMIC_DRAW);
+  gl.bindBuffer (gl.ARRAY_BUFFER, null);
 
   gl.useProgram (this.program);
 
@@ -411,19 +445,34 @@ Choco.prototype.paint = function ()
                           2 * 4 /* pointer */);
   gl.bindBuffer (gl.ARRAY_BUFFER, null);
 
-  gl.bindTexture (gl.TEXTURE_2D, this.textures[0]);
-
   gl.enableVertexAttribArray (this.positionAttrib);
   gl.enableVertexAttribArray (this.texCoordAttrib);
 
   gl.bindBuffer (gl.ELEMENT_ARRAY_BUFFER, this.elementBuffer);
-  gl.drawElements (gl.TRIANGLES, Choco.N_CHUNKS * 6, gl.UNSIGNED_BYTE, 0);
+
+  if (this.stateNum == Choco.ANIMATIONS.length - 1)
+  {
+    gl.bindTexture (gl.TEXTURE_2D, this.textures[0]);
+    gl.drawElements (gl.TRIANGLES, 6, gl.UNSIGNED_BYTE, 0);
+
+    gl.bindTexture (gl.TEXTURE_2D, this.textures[1]);
+    gl.drawElements (gl.TRIANGLES,
+                     6,
+                     gl.UNSIGNED_BYTE,
+                     6);
+  }
+  else
+  {
+    gl.bindTexture (gl.TEXTURE_2D, this.textures[0]);
+    gl.drawElements (gl.TRIANGLES, Choco.N_CHUNKS * 6, gl.UNSIGNED_BYTE, 0);
+  }
+
+  gl.bindTexture (gl.TEXTURE_2D, null);
+
   gl.bindBuffer (gl.ELEMENT_ARRAY_BUFFER, null);
 
   gl.disableVertexAttribArray (this.texCoordAttrib);
   gl.disableVertexAttribArray (this.positionAttrib);
-
-  gl.bindTexture (gl.TEXTURE_2D, null);
 
   gl.useProgram (null);
 
