@@ -204,9 +204,9 @@ Choco.prototype.updateTransform = function ()
   var scale;
 
   if (w > h)
-    scale = [ h / w, 1.0 ];
+    scale = [ h / w * 2.0, 2.0 ];
   else
-    scale = [ 1.0, w / h ];
+    scale = [ 2.0, w / h * 2.0 ];
 
   gl.useProgram (this.program);
   gl.uniform2fv (scaleUniform, scale);
