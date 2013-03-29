@@ -2,6 +2,7 @@ function Choco ()
 {
   this.canvas = document.getElementById ("glcanvas");
   this.gl = null;
+  this.redrawQueued = false;
 
   try
   {
@@ -119,7 +120,28 @@ Choco.prototype.imageToTexture = function (img)
 
 Choco.prototype.finishedLoadingImages = function ()
 {
-  this.paint ();
+  this.queueRedraw ();
+};
+
+Choco.requestAnimationFrame =
+  (window.requestAnimationFrame ||
+   window.webkitRequestAnimationFrame ||
+   window.mozRequestAnimationFrame ||
+   window.oRequestAnimationFrame ||
+   window.msRequestAnimationFrame ||
+   function(callback)
+   {
+     window.setTimeout(callback, 1000.0 / 60.0);
+   }).bind (window);
+
+Choco.prototype.queueRedraw = function ()
+{
+  if (this.redrawQueued)
+    return;
+
+  Choco.requestAnimationFrame (this.paint.bind (this));
+
+  this.redrawQueued = true;
 };
 
 Choco.prototype.loadImages = function ()
@@ -157,6 +179,8 @@ Choco.prototype.shaderSuccessCb = function (shadersString)
   this.positionAttrib = gl.getAttribLocation (this.program, "position_attrib");
   this.texCoordAttrib = gl.getAttribLocation (this.program, "tex_coord_attrib");
 
+  this.rotationUniform = gl.getUniformLocation (this.program, "rotation");
+
   var texUniform = gl.getUniformLocation (this.program, "tex");
   gl.useProgram (this.program);
   gl.uniform1i (texUniform, 0);
@@ -172,9 +196,29 @@ Choco.prototype.shaderSuccessCb = function (shadersString)
   gl.bindBuffer (gl.ARRAY_BUFFER, null);
 };
 
+Choco.prototype.updateRotation = function ()
+{
+  var gl = this.gl;
+  var rotation;
+  var now = (new Date ()).getTime ();
+
+  rotation = now / 1000.0 * Math.PI * 2.0;
+
+  var s = Math.sin (rotation);
+  var c = Math.cos (rotation);
+
+  gl.uniformMatrix2fv (this.rotationUniform,
+                       false, /* transpose */
+                       [ c, -s, s, c ]);
+};
+
 Choco.prototype.paint = function ()
 {
   var gl = this.gl;
+
+  gl.useProgram (this.program);
+
+  this.updateRotation ();
 
   gl.clearColor (0.0, 0.0, 0.0, 1.0);
   gl.clear (gl.COLOR_BUFFER_BIT);
@@ -194,8 +238,6 @@ Choco.prototype.paint = function ()
                           2 * 4 /* pointer */);
   gl.bindBuffer (gl.ARRAY_BUFFER, null);
 
-  gl.useProgram (this.program);
-
   gl.bindTexture (gl.TEXTURE_2D, this.textures[0]);
 
   gl.enableVertexAttribArray (this.positionAttrib);
@@ -209,6 +251,9 @@ Choco.prototype.paint = function ()
   gl.bindTexture (gl.TEXTURE_2D, null);
 
   gl.useProgram (null);
+
+  this.redrawQueued = false;
+  this.queueRedraw ();
 };
 
 (function ()
