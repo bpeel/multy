@@ -27,9 +27,13 @@ function Choco ()
 }
 
 Choco.triangleVertices = [
-  0.0, 1.0,
-  -1.0, -1.0,
-  1.0, -1.0
+  0.0, 1.0,    0.5, 1.0,
+  -1.0, -1.0,  0.0, 0.0,
+  1.0, -1.0,   1.0, 0.0
+];
+
+Choco.images = [
+  "chocolate-piece.png"
 ];
 
 Choco.prototype.showError = function (text)
@@ -94,17 +98,71 @@ Choco.prototype.createProgram = function (vertexSource, fragmentSource)
   return null;
 };
 
+Choco.prototype.imageToTexture = function (img)
+{
+  var gl = this.gl;
+  var tex = gl.createTexture ();
+
+  gl.bindTexture (gl.TEXTURE_2D, tex);
+  gl.texImage2D (gl.TEXTURE_2D,
+                 0 /* level */,
+                 gl.RGB /* format */,
+                 gl.RGB /* internalFormat */,
+                 gl.UNSIGNED_BYTE,
+                 img);
+  gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.bindTexture (gl.TEXTURE_2D, null);
+
+  return tex;
+};
+
+Choco.prototype.finishedLoadingImages = function ()
+{
+  this.paint ();
+};
+
+Choco.prototype.loadImages = function ()
+{
+  var loadedImages = 0;
+
+  this.textures = [];
+
+  for (i = 0; i < Choco.images.length; i++)
+    {
+      var img = new Image ();
+
+      $(img).load (function (imageNum, img)
+                   {
+                     this.textures[imageNum] = this.imageToTexture (img);
+
+                     if (++loadedImages >= Choco.images.length)
+                       this.finishedLoadingImages ();
+                   }.bind (this, i, img));
+      img.src = Choco.images[i];
+    }
+};
+
 Choco.prototype.shaderSuccessCb = function (shadersString)
 {
   var gl = this.gl;
   var shaders = shadersString.split ("//@@");
+  var i;
 
   this.program = this.createProgram (shaders[0], shaders[1]);
 
   if (this.program == null)
     return;
 
-  this.positionAttrib = gl.getAttribLocation (this.program, "position");
+  this.positionAttrib = gl.getAttribLocation (this.program, "position_attrib");
+  this.texCoordAttrib = gl.getAttribLocation (this.program, "tex_coord_attrib");
+
+  var texUniform = gl.getUniformLocation (this.program, "tex");
+  gl.useProgram (this.program);
+  gl.uniform1i (texUniform, 0);
+  gl.useProgram (null);
+
+  this.loadImages ();
 
   this.triangleBuffer = gl.createBuffer ();
   gl.bindBuffer (gl.ARRAY_BUFFER, this.triangleBuffer);
@@ -112,8 +170,6 @@ Choco.prototype.shaderSuccessCb = function (shadersString)
                  new Float32Array (Choco.triangleVertices),
                  gl.STATIC_DRAW);
   gl.bindBuffer (gl.ARRAY_BUFFER, null);
-
-  this.paint ();
 };
 
 Choco.prototype.paint = function ()
@@ -128,17 +184,29 @@ Choco.prototype.paint = function ()
                           2, /* size */
                           gl.FLOAT,
                           false, /* normalize */
-                          0, /* stride */
+                          4 * 4, /* stride */
                           0 /* pointer */);
+  gl.vertexAttribPointer (this.texCoordAttrib,
+                          2, /* size */
+                          gl.FLOAT,
+                          false, /* normalize */
+                          4 * 4, /* stride */
+                          2 * 4 /* pointer */);
   gl.bindBuffer (gl.ARRAY_BUFFER, null);
 
   gl.useProgram (this.program);
 
+  gl.bindTexture (gl.TEXTURE_2D, this.textures[0]);
+
   gl.enableVertexAttribArray (this.positionAttrib);
+  gl.enableVertexAttribArray (this.texCoordAttrib);
 
   gl.drawArrays (gl.TRIANGLE_STRIP, 0, 3);
 
+  gl.disableVertexAttribArray (this.texCoordAttrib);
   gl.disableVertexAttribArray (this.positionAttrib);
+
+  gl.bindTexture (gl.TEXTURE_2D, null);
 
   gl.useProgram (null);
 };
