@@ -2,3 +2,11 @@
     text-align: center;
     margin-top: 3em;
 }
+
+.title {
+    font-family: sans;
+    font-weight: bold;
+    font-size: x-large;
+    text-align: center;
+    width: 480px;
+}
