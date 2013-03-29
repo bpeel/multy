@@ -14,24 +14,18 @@ function Choco ()
   this.redrawQueued = false;
   this.buffer = new ArrayBuffer (Choco.BUFFER_SIZE * 4);
 
-  var chunks = new Array (Choco.N_CHUNKS);
+  this.chunks = new Array (Choco.N_CHUNKS);
 
-  chunks[0] = new Float32Array (this.buffer, 0, Choco.VERTEX_SIZE * 4);
+  this.chunks[0] = new Float32Array (this.buffer, 0, Choco.VERTEX_SIZE * 4);
 
   for (i = 1; i < Choco.N_CHUNKS; i++)
   {
-    chunks[i] =
+    this.chunks[i] =
       new Float32Array (this.buffer,
-                        chunks[i - 1].byteOffset +
-                        chunks[i - 1].byteLength,
+                        this.chunks[i - 1].byteOffset +
+                        this.chunks[i - 1].byteLength,
                         Choco.VERTEX_SIZE * 4);
   }
-
-  this.smallChunk = chunks[0];
-  this.bigChunk = chunks[1];
-  this.leftChunk = chunks[2];
-  this.rightChunk = chunks[3];
-  this.bottomChunk = chunks[4];
 
   try
   {
@@ -277,42 +271,114 @@ Choco.prototype.setChunk = function (chunk, x, y, coords)
   }
 };
 
+Choco.ANIMATIONS =
+  [
+    [
+      [ 0, 4,
+        [ 0, 0, 1, 0, 1, 1, 0, 1 ] ],
+      [ 1, 4,
+        [ 0, 0, 2, 0, 2, 1, 0, 1 ] ],
+      [ 0, 1.5,
+        [ 0, 1.5, 3, 2.7, 3, 4, 0, 4 ] ],
+      [ 3, 2.7,
+        [ 0, 2.7, 2, 3.5, 2, 5, 0, 5 ] ],
+      [ 0, 0,
+        [ 0, 0, 5, 0, 5, 3.5, 0, 1.5 ] ]
+    ],
+    [
+      [ -0.5, 5.10,
+        [ 0, 0, 1, 0, 1, 1, 0, 1 ] ],
+      [ 0.8, 5.10,
+        [ 0, 0, 2, 0, 2, 1, 0, 1 ] ],
+      [ 0, 1.65,
+        [ 0, 1.5, 3, 2.7, 3, 4, 0, 4 ] ],
+      [ 3, 4.77,
+        [ 0, 2.7, 2, 3.5, 2, 5, 0, 5 ] ],
+      null
+    ],
+    [
+      [ -3.5, 5.10,
+        [ 0, 0, 1, 0, 1, 1, 0, 1 ] ],
+      [ -2.2, 5.10,
+        [ 0, 0, 2, 0, 2, 1, 0, 1 ] ],
+      [ 2, 2.3,
+        [ 0, 1.3, 3, 2.5, 3, 4, 0, 4 ] ],
+      [ 0, 4.77,
+        [ 0, 2.7, 2, 3.5, 2, 5, 0, 5 ] ],
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      [ 0, 1.5,
+        [ 0, 2.5, 2, 3.3, 2, 5, 0, 5 ] ],
+      null
+    ],
+    [
+      [ -2, 4,
+        [ 0, 0, 1, 0, 1, 1, 0, 1 ] ],
+      [ 0, 4,
+        [ 0, 0, 2, 0, 2, 1, 0, 1 ] ],
+      null,
+      null,
+      null
+    ],
+  ];
+
+Choco.prototype.interpolate = function (stateA, stateB, interval)
+{
+  var result = new Array (stateA.length);
+  var i;
+
+  for (i = 0; i < stateA.length; i++)
+  {
+    if (typeof (stateA[i]) == "object")
+      result[i] = this.interpolate (stateA[i], stateB[i], interval);
+    else
+      result[i] = (stateB[i] - stateA[i]) * interval + stateA[i];
+  }
+
+  return result;
+}
+
 Choco.prototype.updateChunkBuffer = function ()
 {
-  var animationPos;
   var now = (new Date ()).getTime ();
   var gl = this.gl;
+  var i;
 
   if (!this.startTime)
     this.startTime = now;
 
-  animationPos = (now - this.startTime) % Choco.ANIMATION_LENGTH;
+  var animationPos = (now - this.startTime) / Choco.ANIMATION_LENGTH;
+  animationPos -= Math.floor (animationPos);
+  var statePos = animationPos * (Choco.ANIMATIONS.length - 1);
+  var stateNum = Math.floor (statePos);
+  statePos -= stateNum;
 
   var bx = 0.98 - Choco.CHUNK_WIDTH * 5.0;
   var by = 0.02;
 
-  this.setChunk (this.smallChunk,
-                 bx - Choco.CHUNK_WIDTH * 0.1,
-                 by + 4.5 * Choco.CHUNK_HEIGHT,
-                 [ 0, 0, 1, 0, 1, 1, 0, 1 ]);
+  for (i = 0; i < Choco.N_CHUNKS; i++)
+  {
+    var oldStateNum, oldState, nextState, newState;
 
-  this.setChunk (this.bigChunk,
-                 bx + Choco.CHUNK_WIDTH,
-                 by + 4.5 * Choco.CHUNK_HEIGHT,
-                 [ 0, 0, 2, 0, 2, 1, 0, 1 ]);
+    for (oldStateNum = stateNum;
+         !(oldState = Choco.ANIMATIONS[oldStateNum][i]);
+         oldStateNum--);
+    nextState = Choco.ANIMATIONS[stateNum + 1][i];
 
-  this.setChunk (this.leftChunk,
-                 bx,
-                 by + Choco.CHUNK_HEIGHT * 1.6,
-                 [ 0, 1.5, 3, 2.7, 3, 4, 0, 4 ]);
+    if (nextState == null)
+      newState = oldState;
+    else
+      newState = this.interpolate (oldState, nextState, statePos);
 
-  this.setChunk (this.rightChunk,
-                 bx + Choco.CHUNK_WIDTH * 3.0,
-                 by + Choco.CHUNK_HEIGHT * 3.5,
-                 [ 0, 0.8, 2, 1.5, 2, 3, 0, 3 ]);
-
-  this.setChunk (this.bottomChunk, bx, by,
-                 [ 0, 0, 5, 0, 5, 3.5, 0, 1.5 ]);
+    this.setChunk (this.chunks[i],
+                   bx + newState[0] * Choco.CHUNK_WIDTH,
+                   by + newState[1] * Choco.CHUNK_HEIGHT,
+                   newState[2]);
+  }
 
   gl.bindBuffer (gl.ARRAY_BUFFER, this.chunkBuffer);
   gl.bufferData (gl.ARRAY_BUFFER, this.buffer, gl.DYNAMIC_DRAW);
