@@ -1,8 +1,37 @@
+Choco.VERTEX_SIZE = 4; /* number of floats in a vertex */
+Choco.N_CHUNKS = 5; /* number of chunks of chocolate */
+Choco.BUFFER_SIZE = Choco.VERTEX_SIZE * Choco.N_CHUNKS * 4;
+Choco.ANIMATION_LENGTH = 3000.0;
+Choco.CHUNK_WIDTH = 0.083;
+Choco.CHUNK_HEIGHT = 0.125;
+
 function Choco ()
 {
+  var i;
+
   this.canvas = document.getElementById ("glcanvas");
   this.gl = null;
   this.redrawQueued = false;
+  this.buffer = new ArrayBuffer (Choco.BUFFER_SIZE * 4);
+
+  var chunks = new Array (Choco.N_CHUNKS);
+
+  chunks[0] = new Float32Array (this.buffer, 0, Choco.VERTEX_SIZE * 4);
+
+  for (i = 1; i < Choco.N_CHUNKS; i++)
+  {
+    chunks[i] =
+      new Float32Array (this.buffer,
+                        chunks[i - 1].byteOffset +
+                        chunks[i - 1].byteLength,
+                        Choco.VERTEX_SIZE * 4);
+  }
+
+  this.smallChunk = chunks[0];
+  this.bigChunk = chunks[1];
+  this.leftChunk = chunks[2];
+  this.rightChunk = chunks[3];
+  this.bottomChunk = chunks[4];
 
   try
   {
@@ -26,12 +55,6 @@ function Choco ()
     ajax.error (this.shaderErrorCb.bind (this));
   }
 }
-
-Choco.triangleVertices = [
-  0.0, 1.0,    0.5, 1.0,
-  -1.0, -1.0,  0.0, 0.0,
-  1.0, -1.0,   1.0, 0.0
-];
 
 Choco.images = [
   "chocolate-piece.png"
@@ -165,6 +188,33 @@ Choco.prototype.loadImages = function ()
     }
 };
 
+Choco.prototype.createQuadElements = function (nQuads)
+{
+  var gl = this.gl;
+  var byteArray = new Uint8Array (nQuads * 6);
+  var vertNum = 0;
+  var bytePos = 0;
+  var i;
+
+  for (i = 0; i < nQuads; i++)
+  {
+    byteArray[bytePos++] = vertNum + 0;
+    byteArray[bytePos++] = vertNum + 1;
+    byteArray[bytePos++] = vertNum + 2;
+    byteArray[bytePos++] = vertNum + 0;
+    byteArray[bytePos++] = vertNum + 2;
+    byteArray[bytePos++] = vertNum + 3;
+    vertNum += 4;
+  }
+
+  var buffer = gl.createBuffer ();
+  gl.bindBuffer (gl.ELEMENT_ARRAY_BUFFER, buffer);
+  gl.bufferData (gl.ELEMENT_ARRAY_BUFFER, byteArray, gl.STATIC_DRAW);
+  gl.bindBuffer (gl.ELEMENT_ARRAY_BUFFER, null);
+
+  return buffer;
+};
+
 Choco.prototype.shaderSuccessCb = function (shadersString)
 {
   var gl = this.gl;
@@ -187,12 +237,8 @@ Choco.prototype.shaderSuccessCb = function (shadersString)
   this.updateTransform ();
   this.loadImages ();
 
-  this.triangleBuffer = gl.createBuffer ();
-  gl.bindBuffer (gl.ARRAY_BUFFER, this.triangleBuffer);
-  gl.bufferData (gl.ARRAY_BUFFER,
-                 new Float32Array (Choco.triangleVertices),
-                 gl.STATIC_DRAW);
-  gl.bindBuffer (gl.ARRAY_BUFFER, null);
+  this.chunkBuffer = gl.createBuffer ();
+  this.elementBuffer = this.createQuadElements (Choco.N_CHUNKS);
 };
 
 Choco.prototype.updateTransform = function ()
@@ -213,16 +259,78 @@ Choco.prototype.updateTransform = function ()
   gl.useProgram (null);
 };
 
+Choco.prototype.setChunk = function (chunk, x, y, coords)
+{
+  var i;
+
+  x -= coords[0] * Choco.CHUNK_WIDTH;
+  y -= coords[1] * Choco.CHUNK_HEIGHT;
+
+  for (i = 0; i < 4; i++)
+  {
+    var dx = coords[i * 2];
+    var dy = coords[i * 2 + 1];
+    chunk[i * 4 + 0] = x + dx * Choco.CHUNK_WIDTH;
+    chunk[i * 4 + 1] = y + dy * Choco.CHUNK_HEIGHT;
+    chunk[i * 4 + 2] = dx;
+    chunk[i * 4 + 3] = dy;
+  }
+};
+
+Choco.prototype.updateChunkBuffer = function ()
+{
+  var animationPos;
+  var now = (new Date ()).getTime ();
+  var gl = this.gl;
+
+  if (!this.startTime)
+    this.startTime = now;
+
+  animationPos = (now - this.startTime) % Choco.ANIMATION_LENGTH;
+
+  var bx = 0.98 - Choco.CHUNK_WIDTH * 5.0;
+  var by = 0.02;
+
+  this.setChunk (this.smallChunk,
+                 bx - Choco.CHUNK_WIDTH * 0.1,
+                 by + 4.5 * Choco.CHUNK_HEIGHT,
+                 [ 0, 0, 1, 0, 1, 1, 0, 1 ]);
+
+  this.setChunk (this.bigChunk,
+                 bx + Choco.CHUNK_WIDTH,
+                 by + 4.5 * Choco.CHUNK_HEIGHT,
+                 [ 0, 0, 2, 0, 2, 1, 0, 1 ]);
+
+  this.setChunk (this.leftChunk,
+                 bx,
+                 by + Choco.CHUNK_HEIGHT * 1.6,
+                 [ 0, 1.5, 3, 2.7, 3, 4, 0, 4 ]);
+
+  this.setChunk (this.rightChunk,
+                 bx + Choco.CHUNK_WIDTH * 3.0,
+                 by + Choco.CHUNK_HEIGHT * 3.5,
+                 [ 0, 0.8, 2, 1.5, 2, 3, 0, 3 ]);
+
+  this.setChunk (this.bottomChunk, bx, by,
+                 [ 0, 0, 5, 0, 5, 3.5, 0, 1.5 ]);
+
+  gl.bindBuffer (gl.ARRAY_BUFFER, this.chunkBuffer);
+  gl.bufferData (gl.ARRAY_BUFFER, this.buffer, gl.DYNAMIC_DRAW);
+  gl.bindBuffer (gl.ARRAY_BUFFER, null);
+};
+
 Choco.prototype.paint = function ()
 {
   var gl = this.gl;
+
+  this.updateChunkBuffer ();
 
   gl.useProgram (this.program);
 
   gl.clearColor (0.0, 0.0, 0.0, 1.0);
   gl.clear (gl.COLOR_BUFFER_BIT);
 
-  gl.bindBuffer (gl.ARRAY_BUFFER, this.triangleBuffer);
+  gl.bindBuffer (gl.ARRAY_BUFFER, this.chunkBuffer);
   gl.vertexAttribPointer (this.positionAttrib,
                           2, /* size */
                           gl.FLOAT,
@@ -242,7 +350,9 @@ Choco.prototype.paint = function ()
   gl.enableVertexAttribArray (this.positionAttrib);
   gl.enableVertexAttribArray (this.texCoordAttrib);
 
-  gl.drawArrays (gl.TRIANGLE_STRIP, 0, 3);
+  gl.bindBuffer (gl.ELEMENT_ARRAY_BUFFER, this.elementBuffer);
+  gl.drawElements (gl.TRIANGLES, Choco.N_CHUNKS * 6, gl.UNSIGNED_BYTE, 0);
+  gl.bindBuffer (gl.ELEMENT_ARRAY_BUFFER, null);
 
   gl.disableVertexAttribArray (this.texCoordAttrib);
   gl.disableVertexAttribArray (this.positionAttrib);
