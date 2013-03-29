@@ -5,6 +5,7 @@ Choco.ANIMATION_LENGTH = 3000.0;
 Choco.CHUNK_WIDTH = 0.083;
 Choco.CHUNK_HEIGHT = 0.125;
 Choco.N_BITES = 4;
+Choco.BITES_GAP = 1.0 / 128.0;
 
 function Choco ()
 {
@@ -142,6 +143,13 @@ Choco.prototype.imageToTexture = function (img)
 
 Choco.prototype.finishedLoadingImages = function ()
 {
+  var gl = this.gl;
+
+  gl.bindTexture (gl.TEXTURE_2D, this.textures[1]);
+  gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.bindTexture (gl.TEXTURE_2D, null);
+
   this.queueRedraw ();
 };
 
@@ -378,8 +386,8 @@ Choco.prototype.updateChunkBufferForBites = function ()
   var biteNum = Math.floor (this.statePos * Choco.N_BITES);
   var biteSize = 1.0 / Choco.N_BITES;
   biteChunk[2] = biteNum * biteSize;
-  biteChunk[6] = (biteNum + 1) * biteSize;
-  biteChunk[10] = (biteNum + 1) * biteSize;
+  biteChunk[6] = (biteNum + 1) * biteSize - Choco.BITES_GAP;
+  biteChunk[10] = (biteNum + 1) * biteSize - Choco.BITES_GAP;
   biteChunk[14] = biteNum * biteSize;
 };
 
