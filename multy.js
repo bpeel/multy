@@ -204,9 +204,7 @@ Multy.prototype.shaderSuccessCb = function(shadersString)
 
   this.updateTransform();
 
-  $("#n_points").change(this.updateBuffer.bind(this));
   $("#n_points").bind('input', this.updateBuffer.bind(this));
-  $("#multiplier").change(this.updateMultiplier.bind(this));
   $("#multiplier").bind('input', this.updateMultiplier.bind(this));
   $("#animate").change(this.updateAnimate.bind(this));
   $("#restart").click(this.restartAnimation.bind(this));
