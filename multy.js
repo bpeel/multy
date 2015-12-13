@@ -1,35 +1,35 @@
-Choco.VERTEX_SIZE = 4; /* number of floats in a vertex */
-Choco.N_CHUNKS = 5; /* number of chunks of chocolate */
-Choco.BUFFER_SIZE = Choco.VERTEX_SIZE * Choco.N_CHUNKS * 4;
-Choco.ANIMATION_LENGTH = 3000.0;
-Choco.CHUNK_WIDTH = 0.083;
-Choco.CHUNK_HEIGHT = 0.125;
-Choco.N_BITES = 4;
-Choco.BITES_GAP = 1.0 / 128.0;
+Multy.VERTEX_SIZE = 4; /* number of floats in a vertex */
+Multy.N_CHUNKS = 5; /* number of chunks of multylate */
+Multy.BUFFER_SIZE = Multy.VERTEX_SIZE * Multy.N_CHUNKS * 4;
+Multy.ANIMATION_LENGTH = 3000.0;
+Multy.CHUNK_WIDTH = 0.083;
+Multy.CHUNK_HEIGHT = 0.125;
+Multy.N_BITES = 4;
+Multy.BITES_GAP = 1.0 / 128.0;
 
-function Choco ()
+function Multy ()
 {
   var i;
 
   this.canvas = document.getElementById ("glcanvas");
   this.gl = null;
   this.redrawQueued = false;
-  this.buffer = new ArrayBuffer (Choco.BUFFER_SIZE * 4);
+  this.buffer = new ArrayBuffer (Multy.BUFFER_SIZE * 4);
 
-  this.chunks = new Array (Choco.N_CHUNKS);
+  this.chunks = new Array (Multy.N_CHUNKS);
 
-  this.chunks[0] = new Float32Array (this.buffer, 0, Choco.VERTEX_SIZE * 4);
+  this.chunks[0] = new Float32Array (this.buffer, 0, Multy.VERTEX_SIZE * 4);
 
-  this.baseX = 0.98 - Choco.CHUNK_WIDTH * 5.0;
+  this.baseX = 0.98 - Multy.CHUNK_WIDTH * 5.0;
   this.baseY = 0.02;
 
-  for (i = 1; i < Choco.N_CHUNKS; i++)
+  for (i = 1; i < Multy.N_CHUNKS; i++)
   {
     this.chunks[i] =
       new Float32Array (this.buffer,
                         this.chunks[i - 1].byteOffset +
                         this.chunks[i - 1].byteLength,
-                        Choco.VERTEX_SIZE * 4);
+                        Multy.VERTEX_SIZE * 4);
   }
 
   try
@@ -49,18 +49,18 @@ function Choco ()
   }
   else
   {
-    var ajax = $.ajax ("chocojs.glsl", { dataType: "text" });
+    var ajax = $.ajax ("multyjs.glsl", { dataType: "text" });
     ajax.success (this.shaderSuccessCb.bind (this));
     ajax.error (this.shaderErrorCb.bind (this));
   }
 }
 
-Choco.images = [
-  "chocolate-piece.png",
+Multy.images = [
+  "multylate-piece.png",
   "bites.png"
 ];
 
-Choco.prototype.showError = function (text)
+Multy.prototype.showError = function (text)
 {
   var errorElem = document.getElementById ("errordiv");
   var parent = this.canvas.parentNode;
@@ -73,12 +73,12 @@ Choco.prototype.showError = function (text)
   errorElem.appendChild (node);
 };
 
-Choco.prototype.shaderErrorCb = function (xhr, textStatus)
+Multy.prototype.shaderErrorCb = function (xhr, textStatus)
 {
   this.showError ("Failed to load shaders: " + textStatus);
 };
 
-Choco.prototype.createShader = function (type, source)
+Multy.prototype.createShader = function (type, source)
 {
   var gl = this.gl;
 
@@ -94,7 +94,7 @@ Choco.prototype.createShader = function (type, source)
   return null;
 };
 
-Choco.prototype.createProgram = function (vertexSource, fragmentSource)
+Multy.prototype.createProgram = function (vertexSource, fragmentSource)
 {
   var gl = this.gl;
 
@@ -122,7 +122,7 @@ Choco.prototype.createProgram = function (vertexSource, fragmentSource)
   return null;
 };
 
-Choco.prototype.imageToTexture = function (img)
+Multy.prototype.imageToTexture = function (img)
 {
   var gl = this.gl;
   var tex = gl.createTexture ();
@@ -141,7 +141,7 @@ Choco.prototype.imageToTexture = function (img)
   return tex;
 };
 
-Choco.prototype.finishedLoadingImages = function ()
+Multy.prototype.finishedLoadingImages = function ()
 {
   var gl = this.gl;
 
@@ -153,7 +153,7 @@ Choco.prototype.finishedLoadingImages = function ()
   this.queueRedraw ();
 };
 
-Choco.requestAnimationFrame =
+Multy.requestAnimationFrame =
   (window.requestAnimationFrame ||
    window.webkitRequestAnimationFrame ||
    window.mozRequestAnimationFrame ||
@@ -164,23 +164,23 @@ Choco.requestAnimationFrame =
      window.setTimeout(callback, 1000.0 / 60.0);
    }).bind (window);
 
-Choco.prototype.queueRedraw = function ()
+Multy.prototype.queueRedraw = function ()
 {
   if (this.redrawQueued)
     return;
 
-  Choco.requestAnimationFrame (this.paint.bind (this));
+  Multy.requestAnimationFrame (this.paint.bind (this));
 
   this.redrawQueued = true;
 };
 
-Choco.prototype.loadImages = function ()
+Multy.prototype.loadImages = function ()
 {
   var loadedImages = 0;
 
   this.textures = [];
 
-  for (i = 0; i < Choco.images.length; i++)
+  for (i = 0; i < Multy.images.length; i++)
     {
       var img = new Image ();
 
@@ -188,14 +188,14 @@ Choco.prototype.loadImages = function ()
                    {
                      this.textures[imageNum] = this.imageToTexture (img);
 
-                     if (++loadedImages >= Choco.images.length)
+                     if (++loadedImages >= Multy.images.length)
                        this.finishedLoadingImages ();
                    }.bind (this, i, img));
-      img.src = Choco.images[i];
+      img.src = Multy.images[i];
     }
 };
 
-Choco.prototype.createQuadElements = function (nQuads)
+Multy.prototype.createQuadElements = function (nQuads)
 {
   var gl = this.gl;
   var byteArray = new Uint8Array (nQuads * 6);
@@ -222,7 +222,7 @@ Choco.prototype.createQuadElements = function (nQuads)
   return buffer;
 };
 
-Choco.prototype.shaderSuccessCb = function (shadersString)
+Multy.prototype.shaderSuccessCb = function (shadersString)
 {
   var gl = this.gl;
   var shaders = shadersString.split ("//@@");
@@ -245,10 +245,10 @@ Choco.prototype.shaderSuccessCb = function (shadersString)
   this.loadImages ();
 
   this.chunkBuffer = gl.createBuffer ();
-  this.elementBuffer = this.createQuadElements (Choco.N_CHUNKS);
+  this.elementBuffer = this.createQuadElements (Multy.N_CHUNKS);
 };
 
-Choco.prototype.updateTransform = function ()
+Multy.prototype.updateTransform = function ()
 {
   var gl = this.gl;
   var w = this.canvas.width;
@@ -266,25 +266,25 @@ Choco.prototype.updateTransform = function ()
   gl.useProgram (null);
 };
 
-Choco.prototype.setChunk = function (chunk, x, y, coords)
+Multy.prototype.setChunk = function (chunk, x, y, coords)
 {
   var i;
 
-  x -= coords[0] * Choco.CHUNK_WIDTH;
-  y -= coords[1] * Choco.CHUNK_HEIGHT;
+  x -= coords[0] * Multy.CHUNK_WIDTH;
+  y -= coords[1] * Multy.CHUNK_HEIGHT;
 
   for (i = 0; i < 4; i++)
   {
     var dx = coords[i * 2];
     var dy = coords[i * 2 + 1];
-    chunk[i * 4 + 0] = x + dx * Choco.CHUNK_WIDTH;
-    chunk[i * 4 + 1] = y + dy * Choco.CHUNK_HEIGHT;
+    chunk[i * 4 + 0] = x + dx * Multy.CHUNK_WIDTH;
+    chunk[i * 4 + 1] = y + dy * Multy.CHUNK_HEIGHT;
     chunk[i * 4 + 2] = dx;
     chunk[i * 4 + 3] = dy;
   }
 };
 
-Choco.ANIMATIONS =
+Multy.ANIMATIONS =
   [
     [
       [ 0, 4,
@@ -339,7 +339,7 @@ Choco.ANIMATIONS =
     ],
   ];
 
-Choco.prototype.interpolate = function (stateA, stateB, interval)
+Multy.prototype.interpolate = function (stateA, stateB, interval)
 {
   var result = new Array (stateA.length);
   var i;
@@ -355,23 +355,23 @@ Choco.prototype.interpolate = function (stateA, stateB, interval)
   return result;
 }
 
-Choco.prototype.updateTime = function ()
+Multy.prototype.updateTime = function ()
 {
   var now = (new Date ()).getTime ();
 
   if (!this.startTime)
     this.startTime = now;
 
-  var animationPos = (now - this.startTime) / Choco.ANIMATION_LENGTH;
+  var animationPos = (now - this.startTime) / Multy.ANIMATION_LENGTH;
   animationPos -= Math.floor (animationPos);
-  this.statePos = animationPos * Choco.ANIMATIONS.length;
+  this.statePos = animationPos * Multy.ANIMATIONS.length;
   this.stateNum = Math.floor (this.statePos);
   this.statePos -= this.stateNum;
 };
 
-Choco.prototype.updateChunkBufferForBites = function ()
+Multy.prototype.updateChunkBufferForBites = function ()
 {
-  /* The first quad will just be the entire chocolate bar */
+  /* The first quad will just be the entire multylate bar */
   this.setChunk (this.chunks[0],
                  this.baseX, this.baseY,
                  [ 0, 0, 5, 0, 5, 5, 0, 5 ]);
@@ -379,31 +379,31 @@ Choco.prototype.updateChunkBufferForBites = function ()
   /* The second chunk will be the biting animation */
   var biteChunk = this.chunks[1];
   this.setChunk (biteChunk,
-                 this.baseX - 2 * Choco.CHUNK_WIDTH,
-                 this.baseY + 4 * Choco.CHUNK_HEIGHT,
+                 this.baseX - 2 * Multy.CHUNK_WIDTH,
+                 this.baseY + 4 * Multy.CHUNK_HEIGHT,
                  [ 0, 0, 1, 0, 1, 1, 0, 1 ]);
 
-  var biteNum = Math.floor (this.statePos * Choco.N_BITES);
-  var biteSize = 1.0 / Choco.N_BITES;
+  var biteNum = Math.floor (this.statePos * Multy.N_BITES);
+  var biteSize = 1.0 / Multy.N_BITES;
   biteChunk[2] = biteNum * biteSize;
-  biteChunk[6] = (biteNum + 1) * biteSize - Choco.BITES_GAP;
-  biteChunk[10] = (biteNum + 1) * biteSize - Choco.BITES_GAP;
+  biteChunk[6] = (biteNum + 1) * biteSize - Multy.BITES_GAP;
+  biteChunk[10] = (biteNum + 1) * biteSize - Multy.BITES_GAP;
   biteChunk[14] = biteNum * biteSize;
 };
 
-Choco.prototype.updateChunkBufferForAnimations = function ()
+Multy.prototype.updateChunkBufferForAnimations = function ()
 {
   var gl = this.gl;
   var i;
 
-  for (i = 0; i < Choco.N_CHUNKS; i++)
+  for (i = 0; i < Multy.N_CHUNKS; i++)
   {
     var oldStateNum, oldState, nextState, newState;
 
     for (oldStateNum = this.stateNum;
-         !(oldState = Choco.ANIMATIONS[oldStateNum][i]);
+         !(oldState = Multy.ANIMATIONS[oldStateNum][i]);
          oldStateNum--);
-    nextState = Choco.ANIMATIONS[this.stateNum + 1][i];
+    nextState = Multy.ANIMATIONS[this.stateNum + 1][i];
 
     if (nextState == null)
       newState = oldState;
@@ -411,19 +411,19 @@ Choco.prototype.updateChunkBufferForAnimations = function ()
       newState = this.interpolate (oldState, nextState, this.statePos);
 
     this.setChunk (this.chunks[i],
-                   this.baseX + newState[0] * Choco.CHUNK_WIDTH,
-                   this.baseY + newState[1] * Choco.CHUNK_HEIGHT,
+                   this.baseX + newState[0] * Multy.CHUNK_WIDTH,
+                   this.baseY + newState[1] * Multy.CHUNK_HEIGHT,
                    newState[2]);
   }
 };
 
-Choco.prototype.paint = function ()
+Multy.prototype.paint = function ()
 {
   var gl = this.gl;
 
   this.updateTime ();
 
-  if (this.stateNum == Choco.ANIMATIONS.length - 1)
+  if (this.stateNum == Multy.ANIMATIONS.length - 1)
     this.updateChunkBufferForBites ();
   else
     this.updateChunkBufferForAnimations ();
@@ -458,7 +458,7 @@ Choco.prototype.paint = function ()
 
   gl.bindBuffer (gl.ELEMENT_ARRAY_BUFFER, this.elementBuffer);
 
-  if (this.stateNum == Choco.ANIMATIONS.length - 1)
+  if (this.stateNum == Multy.ANIMATIONS.length - 1)
   {
     gl.bindTexture (gl.TEXTURE_2D, this.textures[0]);
     gl.drawElements (gl.TRIANGLES, 6, gl.UNSIGNED_BYTE, 0);
@@ -472,7 +472,7 @@ Choco.prototype.paint = function ()
   else
   {
     gl.bindTexture (gl.TEXTURE_2D, this.textures[0]);
-    gl.drawElements (gl.TRIANGLES, Choco.N_CHUNKS * 6, gl.UNSIGNED_BYTE, 0);
+    gl.drawElements (gl.TRIANGLES, Multy.N_CHUNKS * 6, gl.UNSIGNED_BYTE, 0);
   }
 
   gl.bindTexture (gl.TEXTURE_2D, null);
@@ -492,7 +492,7 @@ Choco.prototype.paint = function ()
  {
    function init ()
    {
-     var choco = new Choco ();
+     var multy = new Multy ();
    }
 
    $(window).load (init);
