@@ -163,11 +163,19 @@ Multy.prototype.updateBuffer = function()
   this.queueRedraw();
 };
 
+Multy.prototype.resetStartTime = function()
+{
+    this.startTime = (new Date()).getTime();
+    this.startTime -= this.multiplier * Multy.ANIMATION_LENGTH;
+};
+
 Multy.prototype.updateMultiplier = function()
 {
   this.multiplier = parseFloat($("#multiplier").val());
+  if (isNaN(this.multiplier))
+    this.multiplier = 0;
   if (this.startTime)
-    this.startTime = (new Date()).getTime();
+    this.resetStartTime();
   this.queueRedraw();
 };
 
@@ -273,8 +281,7 @@ Multy.prototype.updateAnimate = function()
 {
   if ($("#animate").is(':checked'))
   {
-    this.startTime = (new Date()).getTime();
-    this.startTime -= this.multiplier * Multy.ANIMATION_LENGTH;
+    this.resetStartTime();
     this.queueRedraw();
   }
   else
