@@ -34,7 +34,8 @@ function Multy()
   }
 }
 
-Multy.ANIMATION_LENGTH = 600000.0;
+/* Time in milliseconds to increase by one multiplier */
+Multy.ANIMATION_LENGTH = 6000.0;
 
 Multy.prototype.showError = function(text)
 {
@@ -231,9 +232,7 @@ Multy.prototype.updateTime = function()
   if (!this.startTime)
     return;
 
-  animationPos = (now - this.startTime) / Multy.ANIMATION_LENGTH;
-  animationPos -= Math.floor(animationPos);
-  this.multiplier = animationPos * this.n_points;
+  this.multiplier = (now - this.startTime) / Multy.ANIMATION_LENGTH;
 };
 
 Multy.prototype.paint = function()
@@ -275,7 +274,7 @@ Multy.prototype.updateAnimate = function()
   if ($("#animate").is(':checked'))
   {
     this.startTime = (new Date()).getTime();
-    this.startTime -= this.multiplier * Multy.ANIMATION_LENGTH / this.n_points;
+    this.startTime -= this.multiplier * Multy.ANIMATION_LENGTH;
     this.queueRedraw();
   }
   else
