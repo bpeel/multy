@@ -162,11 +162,20 @@ Multy.prototype.updateBuffer = function()
   this.queueRedraw();
 };
 
+Multy.prototype.updateMultiplier = function()
+{
+  this.multiplier = parseFloat($("#multiplier").val());
+  if (this.startTime)
+    this.startTime = (new Date()).getTime();
+  this.queueRedraw();
+};
+
 Multy.prototype.restartAnimation = function()
 {
   this.multiplier = 0;
   if (this.startTime)
     this.startTime = (new Date()).getTime();
+  $("#multiplier").val("0");
   this.queueRedraw();
 };
 
@@ -188,6 +197,8 @@ Multy.prototype.shaderSuccessCb = function(shadersString)
 
   $("#n_points").change(this.updateBuffer.bind(this));
   $("#n_points").bind('input', this.updateBuffer.bind(this));
+  $("#multiplier").change(this.updateMultiplier.bind(this));
+  $("#multiplier").bind('input', this.updateMultiplier.bind(this));
   $("#animate").change(this.updateAnimate.bind(this));
   $("#restart").click(this.restartAnimation.bind(this));
 
@@ -270,6 +281,7 @@ Multy.prototype.updateAnimate = function()
   else
   {
     this.startTime = false;
+    $("#multiplier").val(this.multiplier.toString());
   }
 };
 
