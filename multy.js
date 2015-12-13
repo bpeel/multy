@@ -34,7 +34,7 @@ function Multy()
   }
 }
 
-Multy.ANIMATION_LENGTH = 60000.0;
+Multy.ANIMATION_LENGTH = 600000.0;
 
 Multy.prototype.showError = function(text)
 {
