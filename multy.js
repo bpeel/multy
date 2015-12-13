@@ -6,6 +6,8 @@ function Multy()
   this.gl = null;
   this.redrawQueued = false;
   this.buffer = null;
+  this.startTime = (new Date()).getTime();
+  this.multiplier = 0;
 
   this.n_points = 100;
 
@@ -175,7 +177,13 @@ Multy.prototype.shaderSuccessCb = function(shadersString)
   this.multiplierUniform = gl.getUniformLocation(this.program, "multiplier");
 
   this.updateTransform();
+
+  $("#n_points").change(this.updateBuffer.bind(this));
+  $("#n_points").bind('input', this.updateBuffer.bind(this));
+  $("#animate").change(this.updateAnimate.bind(this));
+
   this.updateBuffer();
+  this.updateAnimate();
 };
 
 Multy.prototype.updateTransform = function()
@@ -201,10 +209,11 @@ Multy.prototype.updateTime = function()
   var now = (new Date()).getTime();
 
   if (!this.startTime)
-    this.startTime = now;
+    return;
 
-  this.animationPos = (now - this.startTime) / Multy.ANIMATION_LENGTH;
-  this.animationPos -= Math.floor(this.animationPos);
+  animationPos = (now - this.startTime) / Multy.ANIMATION_LENGTH;
+  animationPos -= Math.floor(animationPos);
+  this.multiplier = animationPos * this.n_points;
 };
 
 Multy.prototype.paint = function()
@@ -215,7 +224,7 @@ Multy.prototype.paint = function()
 
   gl.useProgram(this.program);
 
-  gl.uniform1f(this.multiplierUniform, this.animationPos * this.n_points);
+  gl.uniform1f(this.multiplierUniform, this.multiplier);
 
   gl.clearColor(1.0, 1.0, 1.0, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT);
@@ -236,7 +245,23 @@ Multy.prototype.paint = function()
   gl.useProgram(null);
 
   this.redrawQueued = false;
-  this.queueRedraw();
+
+  if (this.startTime)
+    this.queueRedraw();
+};
+
+Multy.prototype.updateAnimate = function()
+{
+  if ($("#animate").is(':checked'))
+  {
+    this.startTime = (new Date()).getTime();
+    this.startTime -= this.multiplier * Multy.ANIMATION_LENGTH / this.n_points;
+    this.queueRedraw();
+  }
+  else
+  {
+    this.startTime = false;
+  }
 };
 
 (function()
@@ -244,9 +269,6 @@ Multy.prototype.paint = function()
    function init()
    {
      var multy = new Multy();
-
-     $("#n_points").change(multy.updateBuffer.bind(multy));
-     $("#n_points").bind('input', multy.updateBuffer.bind(multy));
    }
 
    $(window).load(init);
