@@ -162,6 +162,14 @@ Multy.prototype.updateBuffer = function()
   this.queueRedraw();
 };
 
+Multy.prototype.restartAnimation = function()
+{
+  this.multiplier = 0;
+  if (this.startTime)
+    this.startTime = (new Date()).getTime();
+  this.queueRedraw();
+};
+
 Multy.prototype.shaderSuccessCb = function(shadersString)
 {
   var gl = this.gl;
@@ -181,6 +189,7 @@ Multy.prototype.shaderSuccessCb = function(shadersString)
   $("#n_points").change(this.updateBuffer.bind(this));
   $("#n_points").bind('input', this.updateBuffer.bind(this));
   $("#animate").change(this.updateAnimate.bind(this));
+  $("#restart").click(this.restartAnimation.bind(this));
 
   this.updateBuffer();
   this.updateAnimate();
