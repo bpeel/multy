@@ -120,11 +120,26 @@ Multy.prototype.queueRedraw = function()
 Multy.prototype.updateBuffer = function()
 {
   var gl = this.gl;
-  var vert_data = new Float32Array(this.n_points * 2);
-  var i;
+  var new_n_points;
+
+  new_n_points = parseInt($("#n_points").val());
+  if (new_n_points < 2 || isNaN(new_n_points))
+    new_n_points = 2;
+  else if (new_n_points > 10000)
+    new_n_points = 10000;
 
   if (this.buffer)
+  {
+    if (new_n_points == this.n_points)
+      return;
+
     gl.deleteBuffer(this.buffer);
+  }
+
+  this.n_points = new_n_points;
+
+  var vert_data = new Float32Array(this.n_points * 2);
+  var i;
 
   for (i = 0; i < this.n_points; i++)
   {
@@ -141,6 +156,8 @@ Multy.prototype.updateBuffer = function()
   gl.useProgram(this.program);
   gl.uniform1f(n_points_uniform, this.n_points);
   gl.useProgram(null);
+
+  this.queueRedraw();
 };
 
 Multy.prototype.shaderSuccessCb = function(shadersString)
@@ -159,7 +176,6 @@ Multy.prototype.shaderSuccessCb = function(shadersString)
 
   this.updateTransform();
   this.updateBuffer();
-  this.queueRedraw();
 };
 
 Multy.prototype.updateTransform = function()
@@ -228,6 +244,9 @@ Multy.prototype.paint = function()
    function init()
    {
      var multy = new Multy();
+
+     $("#n_points").change(multy.updateBuffer.bind(multy));
+     $("#n_points").bind('input', multy.updateBuffer.bind(multy));
    }
 
    $(window).load(init);
